@@ -97,7 +97,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, crates, settings
     setIsAiLoading(true);
     setOfflineError(false);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `Agis comme un expert snack-bar Gabon. Données : CA ${analytics.totalGross} F, Stock ${analytics.totalStockValueAchat} F, Charges ${analytics.monthlyFixedCharges} F. Analyse en 3 points courts.`;
 
       const response = await ai.models.generateContent({

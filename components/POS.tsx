@@ -10,6 +10,7 @@ import {
   Bell, 
   X,
   ChevronLeft,
+  ChevronDown,
   User as UserIcon,
   CheckCircle,
   Hash,
@@ -316,6 +317,25 @@ const POS: React.FC<POSProps> = ({ products, categories, onSale, salesCount, man
             <div className="hidden sm:block">
                <h2 className="text-xl font-black italic uppercase tracking-tighter dark:text-white">Caisse Snack</h2>
                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Vente directe</p>
+            </div>
+
+            <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2"></div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative group">
+                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                <select 
+                  value={waiterName}
+                  onChange={(e) => setWaiterName(e.target.value)}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-10 pr-8 font-black text-[10px] uppercase tracking-widest outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer text-slate-700 dark:text-white"
+                >
+                  <option value={managerName}>{managerName} (Gérant)</option>
+                  {staff.filter(s => s.isActive).map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+              </div>
             </div>
 
             <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2"></div>

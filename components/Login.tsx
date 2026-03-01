@@ -52,7 +52,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
       if (staffMember) {
         const waiter: User = {
           id: staffMember.id,
-          role: UserRole.WAITER,
+          role: staffMember.role === 'Gérant' ? UserRole.MANAGER : UserRole.WAITER,
           name: staffMember.name,
           email: `${staffMember.username}@bistrogest.ga`,
           photo: `https://ui-avatars.com/api/?name=${staffMember.name}&background=6366f1&color=fff`,

@@ -27,6 +27,7 @@ import Login from './components/Login';
 import Billing from './components/Billing';
 import BackupReminder from './components/BackupReminder';
 import PaymentReminders from './components/PaymentReminders';
+import DigitalMenu from './components/DigitalMenu';
 
 const STORES: Store[] = [
   { 
@@ -67,6 +68,8 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isDigitalMenu, setIsDigitalMenu] = useState(window.location.hash === '#menu');
 
   // États de l'application
   const [currentStore, setCurrentStore] = useState<Store>(STORES[0]);
@@ -147,6 +150,8 @@ const App: React.FC = () => {
         if (savedSettings) setSettings(savedSettings);
 
         setIsDataLoaded(true);
+        // Cacher le splash screen après un court délai
+        setTimeout(() => setShowSplash(false), 2000);
       } catch (error) {
         console.error("Erreur lors de l'initialisation de la DB locale:", error);
         setIsDataLoaded(true); 
@@ -154,6 +159,13 @@ const App: React.FC = () => {
     };
 
     initData();
+
+    const handleHashChange = () => {
+      setIsDigitalMenu(window.location.hash === '#menu');
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   // PERSISTANCE AUTOMATIQUE DANS INDEXEDDB
@@ -165,14 +177,18 @@ const App: React.FC = () => {
     db.saveMetadata('bistro_categories', categories);
     db.saveMetadata('bistro_crates', crates);
     db.saveMetadata('bistro_settings', settings);
+  }, [currentStore, user, categories, crates, settings, isDataLoaded]);
 
-    // Mise à jour du thème système
+  // GESTION DU THÈME
+  useEffect(() => {
     if (settings.theme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
-  }, [currentStore, user, categories, crates, settings, isDataLoaded]);
+  }, [settings.theme]);
 
   const handleNewSale = async (sale: Sale) => {
     const saleWithStore = { ...sale, storeId: currentStore.id };
@@ -201,6 +217,11 @@ const App: React.FC = () => {
     await db.staff.bulkAdd(newStaff);
   };
 
+  const handleOrderSubmit = async (order: PendingOrder) => {
+    await db.pendingOrders.add(order);
+    setPendingOrders(prev => [...prev, order]);
+  };
+
   const licenseInfo = useMemo(() => {
     if (!currentStore.subscriptionExpiryDate) return { daysRemaining: 30, isExpired: false };
     const expiryDate = new Date(currentStore.subscriptionExpiryDate).getTime();
@@ -226,21 +247,56 @@ const App: React.FC = () => {
 
   const goBack = () => setActiveTab('dashboard');
 
-  if (!isDataLoaded) {
+  if (showSplash || !isDataLoaded) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-16 h-16 bg-emerald-600 rounded-3xl flex items-center justify-center animate-bounce shadow-2xl shadow-emerald-500/20">
-            <ShoppingCart className="w-8 h-8 text-white" />
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full animate-pulse"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full animate-pulse delay-700"></div>
+        </div>
+        
+        <div className="flex flex-col items-center gap-10 z-10">
+          <div className="relative">
+            <div className="w-32 h-32 bg-emerald-600 rounded-[3rem] flex items-center justify-center animate-bounce shadow-[0_0_50px_rgba(5,150,105,0.3)] overflow-hidden relative z-10">
+               {settings.logoUrl && settings.logoUrl !== 'DEFAULT_CART_GREEN' ? (
+                 <img src={settings.logoUrl} className="w-full h-full object-contain p-6" referrerPolicy="no-referrer" />
+               ) : (
+                 <ShoppingCart className="w-12 h-12 text-white" />
+               )}
+            </div>
+            <div className="absolute -inset-4 bg-emerald-500/20 blur-2xl rounded-full animate-pulse"></div>
           </div>
-          <div className="text-center">
-            <h2 className="text-white font-black uppercase tracking-widest text-xs italic">BistroGest Gabon</h2>
-            <div className="mt-4 flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase">
-              <Loader2 className="w-3 h-3 animate-spin" /> Chargement de la base locale...
+          
+          <div className="text-center space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-white font-black uppercase tracking-[0.5em] text-2xl italic leading-none">BistroGest</h2>
+              <p className="text-emerald-500 font-black text-[10px] uppercase tracking-[0.3em]">Gabon Edition v2.6</p>
+            </div>
+            
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 animate-[loading_2s_ease-in-out_infinite]"></div>
+              </div>
+              <span className="text-slate-500 font-bold text-[9px] uppercase tracking-widest animate-pulse">Sécurisation de la session...</span>
             </div>
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (isDigitalMenu) {
+    return (
+      <DigitalMenu 
+        products={products}
+        categories={categories}
+        bistroName={settings.bistroName}
+        onOrderSubmit={handleOrderSubmit}
+        onBack={() => {
+          window.location.hash = '';
+          setIsDigitalMenu(false);
+        }}
+      />
     );
   }
 
@@ -321,8 +377,12 @@ const App: React.FC = () => {
 
           {isMenuOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)}></div>
-              <div className="absolute top-full right-0 mt-4 w-64 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] shadow-2xl p-4 z-20 animate-in slide-in-from-top-4">
+              <div className="fixed inset-0 z-[110]" onClick={() => setIsMenuOpen(false)}></div>
+              <div className="absolute top-[calc(100%+1rem)] right-0 w-72 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-5 z-[120] animate-in slide-in-from-top-4 fade-in duration-200">
+                <div className="px-4 py-3 mb-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Session Active</p>
+                  <p className="text-xs font-black text-slate-900 dark:text-white uppercase italic">{user.name}</p>
+                </div>
                 <div className="space-y-1 mb-4">
                   {navItems.map(item => (
                     <button 
@@ -356,7 +416,23 @@ const App: React.FC = () => {
       <main className="flex-1 pt-24 px-6 lg:px-12 pb-12 overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && <Dashboard products={products} sales={sales} crates={crates} settings={settings} store={currentStore} onUnlock={() => setActiveTab('billing')} onLogout={() => setUser(null)} staff={staff} />}
-          {activeTab === 'pos' && <POS products={products} categories={categories} onSale={handleNewSale} salesCount={sales.length} managerName={settings.managerName} settings={settings} onBack={goBack} pendingOrders={pendingOrders} onValidatePending={(id) => setPendingOrders(prev => prev.filter(o => o.id !== id))} staff={staff} />}
+          {activeTab === 'pos' && (
+            <POS 
+              products={products} 
+              categories={categories} 
+              onSale={handleNewSale} 
+              salesCount={sales.length} 
+              managerName={settings.managerName} 
+              settings={settings} 
+              onBack={goBack} 
+              pendingOrders={pendingOrders} 
+              onValidatePending={async (id) => {
+                await db.pendingOrders.delete(id);
+                setPendingOrders(prev => prev.filter(o => o.id !== id));
+              }} 
+              staff={staff} 
+            />
+          )}
           {activeTab === 'inventory' && <Inventory products={products} setProducts={handleUpdateProducts} categories={categories} setCategories={setCategories} onBack={goBack} />}
           {activeTab === 'sales' && <SalesHistory sales={sales} settings={settings} onBack={goBack} />}
           {activeTab === 'billing' && <Billing store={currentStore} onUpdateTier={updateTierWithCodes} onBack={goBack} />}
