@@ -205,16 +205,28 @@ const App: React.FC = () => {
     setProducts(updatedProducts);
   };
 
-  const handleUpdateProducts = async (newProducts: Product[]) => {
-    setProducts(newProducts);
-    await db.products.clear();
-    await db.products.bulkAdd(newProducts);
+  const handleUpdateProducts = (update: React.SetStateAction<Product[]>) => {
+    setProducts(prev => {
+      const next = typeof update === 'function' ? (update as (prev: Product[]) => Product[])(prev) : update;
+      db.products.clear().then(() => db.products.bulkAdd(next));
+      return next;
+    });
   };
 
-  const handleUpdateStaff = async (newStaff: StaffMember[]) => {
-    setStaff(newStaff);
-    await db.staff.clear();
-    await db.staff.bulkAdd(newStaff);
+  const handleUpdateStaff = (update: React.SetStateAction<StaffMember[]>) => {
+    setStaff(prev => {
+      const next = typeof update === 'function' ? (update as (prev: StaffMember[]) => StaffMember[])(prev) : update;
+      db.staff.clear().then(() => db.staff.bulkAdd(next));
+      return next;
+    });
+  };
+
+  const handleUpdateCategories = (update: React.SetStateAction<string[]>) => {
+    setCategories(prev => {
+      const next = typeof update === 'function' ? (update as (prev: string[]) => string[])(prev) : update;
+      db.saveMetadata('bistro_categories', next);
+      return next;
+    });
   };
 
   const handleOrderSubmit = async (order: PendingOrder) => {
@@ -406,6 +418,10 @@ const App: React.FC = () => {
                     <LogOut className="w-5 h-5" />
                     <span className="font-black text-[10px] uppercase tracking-widest">Quitter</span>
                   </button>
+                  <button onClick={() => { setActiveTab('pos'); setIsMenuOpen(false); }} className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-emerald-500/20 mt-2 shadow-sm">
+                    <ShoppingCart className="w-5 h-5" />
+                    <span className="font-black text-[10px] uppercase tracking-widest">Accès Rapide Caisse</span>
+                  </button>
                 </div>
               </div>
             </>
@@ -433,7 +449,7 @@ const App: React.FC = () => {
               staff={staff} 
             />
           )}
-          {activeTab === 'inventory' && <Inventory products={products} setProducts={handleUpdateProducts} categories={categories} setCategories={setCategories} onBack={goBack} />}
+          {activeTab === 'inventory' && <Inventory products={products} setProducts={handleUpdateProducts} categories={categories} setCategories={handleUpdateCategories} onBack={goBack} />}
           {activeTab === 'sales' && <SalesHistory sales={sales} settings={settings} onBack={goBack} />}
           {activeTab === 'billing' && <Billing store={currentStore} onUpdateTier={updateTierWithCodes} onBack={goBack} />}
           {activeTab === 'settings' && (
