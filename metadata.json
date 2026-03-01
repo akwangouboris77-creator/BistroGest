@@ -1,0 +1,7 @@
+{
+  "name": " BistroGest Gabon",
+  "description": "Logiciel de gestion de stock et de caisse optimisé pour les snack-bars et bistrots au Gabon, incluant la gestion des consignes SOBRAGA et les paiements Mobile Money.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
