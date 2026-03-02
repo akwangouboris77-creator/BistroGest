@@ -167,10 +167,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
                   <KeyRound className="absolute left-6 top-1/2 -translate-y-1/2 text-indigo-500 w-5 h-5" />
                   <input 
                     type="password"
+                    inputMode="numeric"
                     maxLength={4}
                     placeholder="CODE PIN"
                     value={inputCode}
-                    onChange={(e) => setInputCode(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val.length <= 4) setInputCode(val);
+                    }}
                     className="w-full bg-white/5 border border-white/10 text-white py-5 pl-14 pr-6 rounded-2xl font-black tracking-[0.8em] outline-none focus:border-indigo-500 transition-all text-center text-xl"
                   />
                 </div>
