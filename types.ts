@@ -111,6 +111,18 @@ export interface StaffMember {
   isActive: boolean;
 }
 
+export interface Purchase {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  supplier?: string;
+  timestamp: string;
+  managedBy: string;
+}
+
 export interface ActivityLog {
   id: string;
   timestamp: string;

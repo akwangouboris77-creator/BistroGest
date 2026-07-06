@@ -171,9 +171,17 @@ const SalesHistory: React.FC<SalesHistoryProps> = ({ sales, settings, onBack }) 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none">Journal des <span className="text-emerald-500">Ventes</span></h2>
-          <p className="text-slate-400 font-medium text-[10px] mt-2 italic tracking-widest uppercase">Consultation et exportations des données</p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack} 
+            className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-500 transition-all shadow-sm active:scale-95"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none">Journal des <span className="text-emerald-500">Ventes</span></h2>
+            <p className="text-slate-400 font-medium text-[10px] mt-2 italic tracking-widest uppercase">Consultation et exportations des données</p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <button 

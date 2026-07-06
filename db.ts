@@ -1,12 +1,13 @@
 
 import { Dexie, type Table } from 'dexie';
-import { Product, Sale, StaffMember, PendingOrder } from './types';
+import { Product, Sale, StaffMember, PendingOrder, Purchase } from './types';
 
 export class BistroGestDB extends Dexie {
   products!: Table<Product>;
   sales!: Table<Sale>;
   staff!: Table<StaffMember>;
   pendingOrders!: Table<PendingOrder>;
+  purchases!: Table<Purchase>;
   metadata!: Table<{ key: string, value: any }>;
 
   constructor() {
@@ -18,6 +19,7 @@ export class BistroGestDB extends Dexie {
       sales: 'id, timestamp, orderNumber',
       staff: 'id, username',
       pendingOrders: 'id, timestamp',
+      purchases: 'id, timestamp, productId',
       metadata: 'key'
     });
   }

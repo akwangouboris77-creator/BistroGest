@@ -16,7 +16,7 @@ import {
   ChevronDown,
   Loader2
 } from 'lucide-react';
-import { Product, Sale, CrateStock, Settings, User, UserRole, Store, SubscriptionTier, ActivityLog, PendingOrder, StaffMember } from './types';
+import { Product, Sale, CrateStock, Settings, User, UserRole, Store, SubscriptionTier, ActivityLog, PendingOrder, StaffMember, Purchase } from './types';
 import { db } from './db';
 import Dashboard from './components/Dashboard';
 import POS from './components/POS';
@@ -28,6 +28,8 @@ import Billing from './components/Billing';
 import BackupReminder from './components/BackupReminder';
 import PaymentReminders from './components/PaymentReminders';
 import DigitalMenu from './components/DigitalMenu';
+import Purchases from './components/Purchases';
+import { Truck } from 'lucide-react';
 
 const STORES: Store[] = [
   { 
@@ -78,6 +80,7 @@ const App: React.FC = () => {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [crates, setCrates] = useState<CrateStock>({ sobragaEmpties: 0, sobragaFull: 0 });
   const [settings, setSettings] = useState<Settings>({
@@ -113,6 +116,7 @@ const App: React.FC = () => {
           savedStaff,
           savedCategories,
           savedSales,
+          savedPurchases,
           savedPending,
           savedCrates,
           savedSettings
@@ -123,6 +127,7 @@ const App: React.FC = () => {
           db.staff.toArray(),
           db.getMetadata<string[]>('bistro_categories'),
           db.sales.orderBy('timestamp').reverse().toArray(),
+          db.purchases.orderBy('timestamp').reverse().toArray(),
           db.pendingOrders.toArray(),
           db.getMetadata<CrateStock>('bistro_crates'),
           db.getMetadata<Settings>('bistro_settings')
@@ -145,6 +150,7 @@ const App: React.FC = () => {
 
         if (savedCategories) setCategories(savedCategories);
         if (savedSales) setSales(savedSales);
+        if (savedPurchases) setPurchases(savedPurchases);
         if (savedPending) setPendingOrders(savedPending);
         if (savedCrates) setCrates(savedCrates);
         if (savedSettings) setSettings(savedSettings);
@@ -183,10 +189,8 @@ const App: React.FC = () => {
   useEffect(() => {
     if (settings.theme === 'dark') {
       document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
     }
   }, [settings.theme]);
 
@@ -202,6 +206,24 @@ const App: React.FC = () => {
       if (prod) await db.products.put(prod);
     }
     setSales(prev => [saleWithStore, ...prev]);
+    setProducts(updatedProducts);
+  };
+
+  const handleNewPurchase = async (purchase: Purchase) => {
+    await db.purchases.add(purchase);
+    
+    // Mettre à jour le stock
+    const updatedProducts = products.map(p => {
+      if (p.id === purchase.productId) {
+        return { ...p, stock: p.stock + purchase.quantity };
+      }
+      return p;
+    });
+    
+    const prod = updatedProducts.find(p => p.id === purchase.productId);
+    if (prod) await db.products.put(prod);
+    
+    setPurchases(prev => [purchase, ...prev]);
     setProducts(updatedProducts);
   };
 
@@ -343,6 +365,7 @@ const App: React.FC = () => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: [UserRole.OWNER, UserRole.MANAGER] },
     { id: 'pos', label: 'Caisse POS', icon: ShoppingCart, roles: [UserRole.OWNER, UserRole.MANAGER, UserRole.WAITER] },
     { id: 'inventory', label: 'Stocks', icon: Package, roles: [UserRole.OWNER, UserRole.MANAGER] },
+    { id: 'purchases', label: 'Achats', icon: Truck, roles: [UserRole.OWNER, UserRole.MANAGER] },
     { id: 'sales', label: 'Historique', icon: FileBarChart, roles: [UserRole.OWNER, UserRole.MANAGER] },
   ].filter(item => item.roles.includes(user.role));
 
@@ -450,6 +473,7 @@ const App: React.FC = () => {
             />
           )}
           {activeTab === 'inventory' && <Inventory products={products} setProducts={handleUpdateProducts} categories={categories} setCategories={handleUpdateCategories} onBack={goBack} />}
+          {activeTab === 'purchases' && <Purchases products={products} purchases={purchases} onAddPurchase={handleNewPurchase} onBack={goBack} currentUser={user} />}
           {activeTab === 'sales' && <SalesHistory sales={sales} settings={settings} onBack={goBack} />}
           {activeTab === 'billing' && <Billing store={currentStore} onUpdateTier={updateTierWithCodes} onBack={goBack} />}
           {activeTab === 'settings' && (
@@ -462,6 +486,7 @@ const App: React.FC = () => {
               staff={staff} 
               setStaff={handleUpdateStaff} 
               onLogout={() => setUser(null)} 
+              onBack={goBack}
               onSaveSuccess={goBack} 
             />
           )}

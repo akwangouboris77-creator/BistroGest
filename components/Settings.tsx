@@ -40,7 +40,8 @@ import {
   Phone,
   Hash,
   Type as TypeIcon,
-  BellRing
+  BellRing,
+  ChevronLeft
 } from 'lucide-react';
 
 interface SettingsProps {
@@ -52,10 +53,11 @@ interface SettingsProps {
   staff: StaffMember[];
   setStaff: React.Dispatch<React.SetStateAction<StaffMember[]>>;
   onLogout: () => void;
+  onBack: () => void;
   onSaveSuccess: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, setSettings, store, setStore, user, staff, setStaff, onLogout, onSaveSuccess }) => {
+const Settings: React.FC<SettingsProps> = ({ settings, setSettings, store, setStore, user, staff, setStaff, onLogout, onBack, onSaveSuccess }) => {
   const [logoPreview, setLogoPreview] = useState<string | undefined>(settings.logoUrl);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
@@ -214,9 +216,17 @@ const Settings: React.FC<SettingsProps> = ({ settings, setSettings, store, setSt
   return (
     <div className="space-y-12 max-w-5xl mx-auto pb-24 animate-in fade-in duration-500">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
-        <div>
-          <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-slate-100 tracking-tighter italic uppercase leading-none">Console <span className="text-emerald-600">Config</span></h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 italic uppercase tracking-widest text-[10px]">Identité Établissement & Gestion Serveurs</p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack} 
+            className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-500 transition-all shadow-sm active:scale-95"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-slate-100 tracking-tighter italic uppercase leading-none">Console <span className="text-emerald-600">Config</span></h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 italic uppercase tracking-widest text-[10px]">Identité Établissement & Gestion Serveurs</p>
+          </div>
         </div>
         <button onClick={onLogout} className="flex items-center gap-3 bg-rose-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-rose-500/10 hover:bg-rose-600 transition-all active:scale-95">
           <LogOut className="w-4 h-4" /> Se Déconnecter
@@ -280,14 +290,14 @@ const Settings: React.FC<SettingsProps> = ({ settings, setSettings, store, setSt
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className={`relative flex items-center gap-4 p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${settings.theme === 'light' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500 dark:text-slate-400'}`}>
-                <input type="radio" name="theme" value="light" defaultChecked={settings.theme === 'light'} className="hidden" onChange={() => setSettings(s => ({...s, theme: 'light'}))} />
+                <input type="radio" name="theme" value="light" checked={settings.theme === 'light'} className="hidden" onChange={() => setSettings(s => ({...s, theme: 'light'}))} />
                 <Sun className={`w-6 h-6 ${settings.theme === 'light' ? 'text-emerald-500' : 'text-slate-400'}`} />
                 <span className="font-black uppercase tracking-widest text-[10px]">Mode Jour (Clair)</span>
                 {settings.theme === 'light' && <CircleCheck className="absolute top-4 right-4 w-5 h-5" />}
               </label>
 
               <label className={`relative flex items-center gap-4 p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${settings.theme === 'dark' ? 'bg-slate-800 border-indigo-500 text-indigo-400 shadow-lg' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500 dark:text-slate-400'}`}>
-                <input type="radio" name="theme" value="dark" defaultChecked={settings.theme === 'dark'} className="hidden" onChange={() => setSettings(s => ({...s, theme: 'dark'}))} />
+                <input type="radio" name="theme" value="dark" checked={settings.theme === 'dark'} className="hidden" onChange={() => setSettings(s => ({...s, theme: 'dark'}))} />
                 <Moon className={`w-6 h-6 ${settings.theme === 'dark' ? 'text-indigo-400' : 'text-slate-400'}`} />
                 <span className="font-black uppercase tracking-widest text-[10px]">Mode Nuit (Sombre)</span>
                 {settings.theme === 'dark' && <CircleCheck className="absolute top-4 right-4 w-5 h-5" />}
