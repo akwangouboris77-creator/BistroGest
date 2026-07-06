@@ -16,7 +16,7 @@ import {
 
 interface BillingProps {
   store: Store;
-  onUpdateTier: (tier: SubscriptionTier, codes?: { activation: string, staff: string }) => void;
+  onUpdateTier: (tier: SubscriptionTier, codes?: { activation: string, staff: string }, durationDays?: number) => void;
   onBack?: () => void;
 }
 
@@ -28,9 +28,9 @@ const Billing: React.FC<BillingProps> = ({ store, onUpdateTier, onBack }) => {
   const [showCodes, setShowCodes] = useState(false);
 
   const plans = [
-    { id: 'starter', name: 'Starter', price: '4 900', features: ['1 Boutique', 'Caisse Mobile Money'], color: 'from-slate-700 to-slate-900' },
-    { id: 'pro', name: 'Pro Business', price: '9 900', features: ['Stock illimité', 'Rapports CSV', 'Multi-utilisateurs'], color: 'from-blue-600 to-blue-800' },
-    { id: 'enterprise', name: 'Entreprise', price: '24 900', features: ['Conseiller IA (Booster CA)', 'Notation Personnel', 'Charges Fixes (SEEG/Loyer)', 'Multi-Boutiques'], color: 'from-emerald-600 to-emerald-800' }
+    { id: 'mensuel', name: 'Mensuel', price: '5 000', period: 'mois', days: 30, features: ['Accès complet 1 mois', 'Suivi de Stocks & Fournisseurs', 'Caisse Mobile Money & Espèces', 'Rapports d\'activité journaliers'], color: 'from-slate-700 to-slate-900' },
+    { id: 'trimestriel', name: 'Trimestriel', price: '14 000', period: 'trimestre', days: 90, features: ['Accès complet 3 mois', 'Stock illimité (Économie)', 'Notation & Performance Serveurs', 'Suivi SEEG & Charges Fixes'], color: 'from-blue-600 to-blue-800' },
+    { id: 'annuel', name: 'Annuel', price: '59 000', period: 'an', days: 365, features: ['Accès complet 12 mois', 'Conseiller IA illimité (Booster CA)', 'Multi-Boutiques / Restaurants', 'Support VIP & Mises à jour gratuites'], color: 'from-emerald-600 to-emerald-800' }
   ];
 
   const handlePayment = () => {
@@ -48,8 +48,8 @@ const Billing: React.FC<BillingProps> = ({ store, onUpdateTier, onBack }) => {
     setTimeout(() => {
       setIsProcessing(false);
       setShowPayModal(false);
-      onUpdateTier(selectedPlan.id, { activation, staff });
-      alert(`Souscription réussie ! Votre code établissement a été renouvelé pour 30 jours : ${activation}`);
+      onUpdateTier(selectedPlan.id, { activation, staff }, selectedPlan.days);
+      alert(`Souscription réussie ! Votre code établissement a été renouvelé pour ${selectedPlan.days} jours : ${activation}`);
     }, 2000);
   };
 
@@ -102,7 +102,7 @@ const Billing: React.FC<BillingProps> = ({ store, onUpdateTier, onBack }) => {
             <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-4">{plan.name}</h3>
             <div className="flex items-baseline gap-2 mb-10">
               <span className="text-5xl font-black tracking-tighter">{plan.price}</span>
-              <span className="text-sm font-bold opacity-70">F/mois</span>
+              <span className="text-sm font-bold opacity-70">F / {plan.period}</span>
             </div>
             <ul className="space-y-4 mb-12 flex-1">
               {plan.features.map(f => (

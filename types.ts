@@ -17,7 +17,7 @@ export enum UserRole {
   WAITER = 'Serveur'
 }
 
-export type SubscriptionTier = 'starter' | 'pro' | 'enterprise';
+export type SubscriptionTier = 'starter' | 'pro' | 'enterprise' | 'mensuel' | 'trimestriel' | 'annuel';
 
 export interface User {
   id: string;

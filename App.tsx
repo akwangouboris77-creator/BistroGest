@@ -37,11 +37,11 @@ const STORES: Store[] = [
     name: 'Bistro Libreville HQ', 
     location: 'Glass, LBV', 
     tvaEnabled: true, 
-    subscriptionStatus: 'ACTIVE', 
-    tier: 'enterprise',
+    subscriptionStatus: 'TRIAL', 
+    tier: 'mensuel',
     activationCode: '123456',
     staffAccessCode: '2410',
-    subscriptionExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    subscriptionExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   },
 ];
 
@@ -257,7 +257,7 @@ const App: React.FC = () => {
   };
 
   const licenseInfo = useMemo(() => {
-    if (!currentStore.subscriptionExpiryDate) return { daysRemaining: 30, isExpired: false };
+    if (!currentStore.subscriptionExpiryDate) return { daysRemaining: 7, isExpired: false };
     const expiryDate = new Date(currentStore.subscriptionExpiryDate).getTime();
     const diffTime = expiryDate - Date.now();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -268,12 +268,12 @@ const App: React.FC = () => {
     };
   }, [currentStore.subscriptionExpiryDate, currentStore.subscriptionStatus]);
 
-  const updateTierWithCodes = (tier: SubscriptionTier, codes?: { activation: string; staff: string }) => {
+  const updateTierWithCodes = (tier: SubscriptionTier, codes?: { activation: string; staff: string }, durationDays: number = 30) => {
     setCurrentStore(prev => ({
       ...prev,
       tier,
       subscriptionStatus: 'ACTIVE',
-      subscriptionExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      subscriptionExpiryDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString(),
       activationCode: codes?.activation || prev.activationCode,
       staffAccessCode: codes?.staff || prev.staffAccessCode
     }));
@@ -342,7 +342,7 @@ const App: React.FC = () => {
             <ShieldAlert className="w-20 h-20 text-rose-500 mb-6 animate-pulse" />
             <h2 className="text-3xl font-black uppercase italic tracking-tighter">Essai Terminé</h2>
             <p className="text-slate-400 font-medium text-sm mt-4 leading-relaxed uppercase tracking-widest">
-              Votre période d'essai de 30 jours est expirée. Veuillez activer votre licence.
+              Votre période d'essai gratuite de 7 jours (1 semaine) est expirée. Veuillez choisir une formule d'abonnement pour continuer.
             </p>
           </div>
           <button onClick={() => setActiveTab('billing')} className="w-full bg-emerald-600 py-6 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3">
