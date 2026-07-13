@@ -51,6 +51,9 @@ export interface Product {
   hasConsigne: boolean;
   category: string;
   image?: string;
+  isDose?: boolean;
+  parentBottleId?: string;
+  dosesPerBottle?: number;
 }
 
 export interface SaleItem {

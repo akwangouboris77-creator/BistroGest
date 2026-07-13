@@ -16,7 +16,9 @@ import {
   Upload,
   Settings,
   Tags,
-  Info
+  Info,
+  Wine,
+  GlassWater
 } from 'lucide-react';
 
 interface InventoryProps {
@@ -36,6 +38,11 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, categories
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
 
+  // États pour la gestion des doses de liqueurs
+  const [isDoseState, setIsDoseState] = useState(false);
+  const [selectedParentBottleId, setSelectedParentBottleId] = useState('');
+  const [dosesPerBottleVal, setDosesPerBottleVal] = useState(15);
+
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -45,6 +52,31 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, categories
   const handleDelete = (id: string) => {
     if (confirm('Voulez-vous vraiment supprimer ce produit ?')) {
       setProducts(prev => prev.filter(p => p.id !== id));
+    }
+  };
+
+  const handleOpenBottle = (doseProduct: Product) => {
+    if (!doseProduct.parentBottleId) return;
+    const parentBottle = products.find(p => p.id === doseProduct.parentBottleId);
+    if (!parentBottle) {
+      alert("La bouteille parente associée n'existe plus.");
+      return;
+    }
+    if (parentBottle.stock < 1) {
+      alert(`Stock insuffisant de "${parentBottle.name}" pour ouvrir une nouvelle bouteille (Stock actuel: ${parentBottle.stock}).`);
+      return;
+    }
+    
+    if (confirm(`Voulez-vous ouvrir 1 bouteille de "${parentBottle.name}" ?\n\nCela déduira 1 bouteille de ce stock et ajoutera ${doseProduct.dosesPerBottle || 15} doses au stock de "${doseProduct.name}".`)) {
+      setProducts(prev => prev.map(p => {
+        if (p.id === parentBottle.id) {
+          return { ...p, stock: p.stock - 1 };
+        }
+        if (p.id === doseProduct.id) {
+          return { ...p, stock: p.stock + (doseProduct.dosesPerBottle || 15) };
+        }
+        return p;
+      }));
     }
   };
 
@@ -62,6 +94,9 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, categories
   const openModal = (product: Product | null = null) => {
     setEditingProduct(product);
     setImagePreview(product?.image);
+    setIsDoseState(product?.isDose || false);
+    setSelectedParentBottleId(product?.parentBottleId || '');
+    setDosesPerBottleVal(product?.dosesPerBottle || 15);
     setIsModalOpen(true);
   };
 
@@ -78,7 +113,10 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, categories
       threshold: Number(formData.get('threshold')),
       hasConsigne: formData.get('hasConsigne') === 'on',
       category: formData.get('category') as string,
-      image: imagePreview
+      image: imagePreview,
+      isDose: isDoseState,
+      parentBottleId: isDoseState && selectedParentBottleId ? selectedParentBottleId : undefined,
+      dosesPerBottle: isDoseState ? dosesPerBottleVal : undefined
     };
 
     if (editingProduct) {
@@ -205,6 +243,11 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, categories
                             )}
                           </div>
                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{product.category}</span>
+                          {product.isDose && product.parentBottleId && (
+                            <div className="mt-2 flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-black px-2.5 py-1 rounded-xl uppercase tracking-widest w-fit border border-emerald-500/20">
+                              <GlassWater className="w-3.5 h-3.5" /> Dose de Liqueur (1 btl = {product.dosesPerBottle || 15} doses)
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -224,6 +267,16 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, categories
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center justify-end gap-2">
+                        {product.isDose && product.parentBottleId && (
+                          <button 
+                            onClick={() => handleOpenBottle(product)}
+                            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-md transition-all active:scale-95 mr-2"
+                            title="Ouvrir une bouteille pour ajouter des doses"
+                          >
+                            <Wine className="w-4 h-4" />
+                            Ouvrir Btl
+                          </button>
+                        )}
                         <button onClick={() => openModal(product)} className="p-3 text-slate-400 hover:text-emerald-600 rounded-2xl transition-all border border-transparent hover:border-emerald-100">
                           <Edit2 className="w-5 h-5" />
                         </button>
@@ -334,6 +387,50 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, categories
                     <input name="hasConsigne" type="checkbox" defaultChecked={editingProduct?.hasConsigne} className="w-6 h-6 accent-amber-600" />
                     <span className="font-black text-amber-900 dark:text-amber-400 uppercase text-[10px]">SOBRAGA (Vides)</span>
                   </label>
+                </div>
+
+                {/* Configuration des doses pour les liqueurs */}
+                <div className="p-5 bg-emerald-500/5 dark:bg-slate-800/50 rounded-[2rem] border border-emerald-500/10 dark:border-slate-800/50 space-y-4">
+                  <label className="flex items-center gap-4 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={isDoseState} 
+                      onChange={(e) => setIsDoseState(e.target.checked)}
+                      className="w-6 h-6 accent-emerald-600" 
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-black text-slate-900 dark:text-slate-200 uppercase text-[10px]">C'est une Dose de Liqueur</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase">Ce produit est servi au verre/shot à partir d'une bouteille</span>
+                    </div>
+                  </label>
+
+                  {isDoseState && (
+                    <div className="grid grid-cols-2 gap-4 pt-2 animate-in slide-in-from-top-2 duration-200">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-1">Bouteille Parente</label>
+                        <select 
+                          value={selectedParentBottleId} 
+                          onChange={(e) => setSelectedParentBottleId(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 px-3 text-slate-900 dark:text-slate-100 font-bold outline-none text-xs"
+                        >
+                          <option value="">-- Choisir la bouteille --</option>
+                          {products.filter(p => !p.isDose && p.id !== editingProduct?.id).map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-1">Doses par Bouteille</label>
+                        <input 
+                          type="number" 
+                          value={dosesPerBottleVal} 
+                          onChange={(e) => setDosesPerBottleVal(Number(e.target.value))}
+                          placeholder="ex: 15" 
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 px-5 text-slate-900 dark:text-slate-100 font-bold outline-none text-xs" 
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
