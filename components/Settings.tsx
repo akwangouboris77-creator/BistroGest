@@ -1,7 +1,16 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Settings as SettingsType, User as UserType, StaffMember, UserRole, Store as StoreType } from '../types';
 import { db } from '../db';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { auth } from '../firebase';
+import { uploadToCloud, downloadFromCloud } from '../sync';
 import { 
   Building2, 
   Save, 
@@ -41,7 +50,11 @@ import {
   Hash,
   Type as TypeIcon,
   BellRing,
-  ChevronLeft
+  ChevronLeft,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  AlertCircle
 } from 'lucide-react';
 
 interface SettingsProps {
@@ -63,6 +76,137 @@ const Settings: React.FC<SettingsProps> = ({ settings, setSettings, store, setSt
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [showActivationCode, setShowActivationCode] = useState(false);
+
+  // States pour la synchronisation Cloud
+  const [cloudUser, setCloudUser] = useState<FirebaseUser | null>(null);
+  const [cloudEmail, setCloudEmail] = useState('');
+  const [cloudPassword, setCloudPassword] = useState('');
+  const [isCloudSignUp, setIsCloudSignUp] = useState(false);
+  const [cloudLoading, setCloudLoading] = useState(false);
+  const [cloudError, setCloudError] = useState('');
+  const [cloudSuccess, setCloudSuccess] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (usr) => {
+      setCloudUser(usr);
+      if (usr) {
+        setCloudEmail(usr.email || '');
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleCloudSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCloudLoading(true);
+    setCloudError('');
+    setCloudSuccess('');
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, cloudEmail, cloudPassword);
+      const uid = userCredential.user.uid;
+      
+      const updatedStore = { ...store, id: uid };
+      setStore(updatedStore);
+      await db.saveMetadata('bistro_store', updatedStore);
+      
+      await uploadToCloud(uid);
+      setCloudSuccess("Compte Cloud créé et données synchronisées avec succès !");
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setCloudError("Cet e-mail est déjà utilisé par un autre établissement.");
+      } else if (err.code === 'auth/weak-password') {
+        setCloudError("Le mot de passe doit contenir au moins 6 caractères.");
+      } else {
+        setCloudError(err.message || "Une erreur est survenue lors de l'enregistrement.");
+      }
+    } finally {
+      setCloudLoading(false);
+    }
+  };
+
+  const handleCloudSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCloudLoading(true);
+    setCloudError('');
+    setCloudSuccess('');
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, cloudEmail, cloudPassword);
+      const uid = userCredential.user.uid;
+      
+      const exists = await downloadFromCloud(uid);
+      if (exists) {
+        setCloudSuccess("Connexion réussie ! Vos données ont été téléchargées sur cet appareil.");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        const updatedStore = { ...store, id: uid };
+        setStore(updatedStore);
+        await db.saveMetadata('bistro_store', updatedStore);
+        await uploadToCloud(uid);
+        setCloudSuccess("Connexion réussie ! Nouvelle base de données Cloud initialisée.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setCloudError("Identifiants Cloud de l'établissement incorrects.");
+      } else {
+        setCloudError(err.message || "Erreur de connexion.");
+      }
+    } finally {
+      setCloudLoading(false);
+    }
+  };
+
+  const handleCloudSignOut = async () => {
+    if (confirm("Se déconnecter du Cloud ? Vos données locales resteront sur cet appareil.")) {
+      await signOut(auth);
+      setCloudEmail('');
+      setCloudPassword('');
+      setCloudSuccess("Déconnexion réussie.");
+    }
+  };
+
+  const handleSyncPush = async () => {
+    if (!cloudUser) return;
+    setCloudLoading(true);
+    setCloudError('');
+    setCloudSuccess('');
+    try {
+      await uploadToCloud(cloudUser.uid);
+      setCloudSuccess("Sauvegarde réussie de vos données sur le Cloud !");
+    } catch (err: any) {
+      console.error(err);
+      setCloudError("Échec de la sauvegarde : " + err.message);
+    } finally {
+      setCloudLoading(false);
+    }
+  };
+
+  const handleSyncPull = async () => {
+    if (!cloudUser) return;
+    if (!confirm("Attention : cette action va écraser TOUTES vos données locales (ventes, stocks, réglages) par la version sauvegardée sur le Cloud. Continuer ?")) return;
+    setCloudLoading(true);
+    setCloudError('');
+    setCloudSuccess('');
+    try {
+      const exists = await downloadFromCloud(cloudUser.uid);
+      if (exists) {
+        setCloudSuccess("Données récupérées avec succès ! Rechargement de l'application...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setCloudError("Aucune sauvegarde trouvée sur le Cloud pour cet établissement.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setCloudError("Échec de la récupération : " + err.message);
+    } finally {
+      setCloudLoading(false);
+    }
+  };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -276,6 +420,148 @@ const Settings: React.FC<SettingsProps> = ({ settings, setSettings, store, setSt
              <FileJson className="w-4 h-4" /> Importer Sauvegarde
            </button>
            <input type="file" ref={importInputRef} onChange={handleImportData} className="hidden" accept=".bistro" />
+        </div>
+      </div>
+
+      {/* SECTION SYNCHRONISATION CLOUD */}
+      <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border border-indigo-500/20 text-white p-8 md:p-10 rounded-[3rem] shadow-2xl relative overflow-hidden my-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl pointer-events-none"></div>
+        
+        <div className="relative z-10 space-y-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400">
+                <Cloud className="w-7 h-7" />
+              </div>
+              <div>
+                <h4 className="text-2xl font-black uppercase italic tracking-tighter">Synchronisation Internet & Cloud</h4>
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Sauvegardez vos données en ligne et accédez-y sur n'importe quel appareil.</p>
+              </div>
+            </div>
+            
+            {cloudUser && (
+              <button 
+                onClick={handleCloudSignOut}
+                type="button"
+                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-5 py-3 rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-rose-500/20 transition-all flex items-center gap-2"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Déconnecter le Cloud
+              </button>
+            )}
+          </div>
+
+          {cloudError && (
+            <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex items-center gap-3 text-rose-400 text-xs font-semibold">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <span>{cloudError}</span>
+            </div>
+          )}
+
+          {cloudSuccess && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-3 text-emerald-400 text-xs font-semibold">
+              <CircleCheck className="w-5 h-5 shrink-0" />
+              <span>{cloudSuccess}</span>
+            </div>
+          )}
+
+          {cloudUser ? (
+            <div className="bg-white/5 border border-white/10 p-6 rounded-[2rem] space-y-6 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Établissement connecté</p>
+                  <p className="text-base font-black text-white">{cloudUser.email}</p>
+                  <p className="text-[9px] text-indigo-400 font-bold uppercase mt-1">ID unique : <span className="font-mono bg-white/5 px-2 py-0.5 rounded">{cloudUser.uid}</span></p>
+                </div>
+                
+                <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-indigo-400 font-bold text-[9px] uppercase tracking-wider">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Synchro active
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                <button
+                  onClick={handleSyncPush}
+                  disabled={cloudLoading}
+                  type="button"
+                  className="bg-indigo-600 text-white p-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl shadow-indigo-600/10"
+                >
+                  {cloudLoading ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <CloudUpload className="w-5 h-5" />}
+                  Sauvegarder vers le Cloud
+                </button>
+                
+                <button
+                  onClick={handleSyncPull}
+                  disabled={cloudLoading}
+                  type="button"
+                  className="bg-slate-800 text-slate-300 border border-white/10 p-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                >
+                  {cloudLoading ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <CloudDownload className="w-5 h-5" />}
+                  Récupérer du Cloud
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2rem] space-y-6 text-left">
+              <div className="max-w-2xl">
+                <p className="text-sm font-bold text-slate-300 leading-relaxed">
+                  Lier votre établissement à un compte Cloud vous permet de synchroniser vos codes d'accès personnalisés, vos stocks et vos ventes.
+                </p>
+                <p className="text-xs text-slate-400 mt-2">
+                  Idéal en cas de changement de smartphone/tablette ou de travail sur plusieurs appareils en même temps.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">E-mail de l'établissement</label>
+                    <input
+                      type="email"
+                      required={!cloudUser}
+                      value={cloudEmail}
+                      onChange={(e) => setCloudEmail(e.target.value)}
+                      placeholder="bistro@exemple.com"
+                      className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white font-semibold outline-none focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mot de passe Cloud (min. 6 car.)</label>
+                    <input
+                      type="password"
+                      required={!cloudUser}
+                      minLength={6}
+                      value={cloudPassword}
+                      onChange={(e) => setCloudPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white font-semibold outline-none focus:border-indigo-500 text-sm text-center tracking-widest"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => { setIsCloudSignUp(!isCloudSignUp); setCloudError(''); setCloudSuccess(''); }}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider"
+                  >
+                    {isCloudSignUp ? "Déjà un compte ? Se connecter" : "Nouveau ? Créer un compte établissement"}
+                  </button>
+
+                  <button
+                    onClick={isCloudSignUp ? handleCloudSignUp : handleCloudSignIn}
+                    disabled={cloudLoading}
+                    type="button"
+                    className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                  >
+                    {cloudLoading && <RefreshCcw className="w-4 h-4 animate-spin" />}
+                    {isCloudSignUp ? "Créer et Synchroniser" : "Se Connecter & Récupérer"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

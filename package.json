@@ -13,6 +13,7 @@
     "@google/genai": "^1.38.0",
     "@tailwindcss/vite": "^4.2.0",
     "dexie": "^4.0.11",
+    "firebase": "^12.16.0",
     "lucide-react": "^0.562.0",
     "motion": "^12.34.3",
     "react": "^19.2.3",
