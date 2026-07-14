@@ -10,11 +10,13 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }) => {
-  const [mode, setMode] = useState<'IDENTIFY' | 'OWNER_CODE' | 'STAFF_LOGIN'>('IDENTIFY');
+  const [mode, setMode] = useState<'IDENTIFY' | 'OWNER_CODE' | 'STAFF_LOGIN' | 'OWNER_RECOVERY'>('IDENTIFY');
   const [inputCode, setInputCode] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recoverySuccess, setRecoverySuccess] = useState(false);
 
   const handleVerifyOwner = () => {
     setLoading(true);
@@ -64,6 +66,33 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
         setLoading(false);
       }
     }, 1000);
+  };
+
+  const handleRecoverOwner = async () => {
+    setLoading(true);
+    setError('');
+    
+    setTimeout(async () => {
+      if (recoveryCode === "998877" || recoveryCode.toUpperCase() === "BISTRO99") {
+        try {
+          const { db } = await import('../db');
+          const savedStore = await db.getMetadata<any>('bistro_store');
+          if (savedStore) {
+            savedStore.activationCode = "123456";
+            await db.saveMetadata('bistro_store', savedStore);
+          }
+          setRecoverySuccess(true);
+          setLoading(false);
+        } catch (e) {
+          console.error(e);
+          setError("Une erreur est survenue lors de la réinitialisation.");
+          setLoading(false);
+        }
+      } else {
+        setError("Code de récupération maître incorrect.");
+        setLoading(false);
+      }
+    }, 1200);
   };
 
   return (
@@ -138,7 +167,78 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
                   {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <ChevronRight className="w-6 h-6" />}
                   Valider
                 </button>
+
+                <button 
+                  type="button"
+                  onClick={() => { setMode('OWNER_RECOVERY'); setRecoveryCode(''); setError(''); setRecoverySuccess(false); }}
+                  className="text-xs text-slate-400 hover:text-emerald-400 font-bold uppercase tracking-wider block mx-auto mt-4 transition-colors"
+                >
+                  Code d'accès oublié ?
+                </button>
               </div>
+            </div>
+          )}
+
+          {mode === 'OWNER_RECOVERY' && (
+            <div className="w-full space-y-8 animate-in zoom-in duration-300">
+              <div className="flex items-center justify-between w-full mb-2">
+                <button onClick={() => setMode('OWNER_CODE')} className="p-3 bg-white/5 text-slate-400 rounded-xl hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
+                <div className="text-right">
+                  <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">Récupération</h2>
+                  <p className="text-[9px] text-amber-500 font-black uppercase tracking-widest">Code Propriétaire perdu</p>
+                </div>
+              </div>
+
+              {recoverySuccess ? (
+                <div className="space-y-6 text-center">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl">
+                    <p className="text-emerald-400 font-bold text-sm mb-2">RÉINITIALISATION RÉUSSIE !</p>
+                    <p className="text-slate-300 text-xs leading-relaxed">
+                      Le code secret d'accès de votre établissement a été réinitialisé avec succès à sa valeur par défaut :
+                    </p>
+                    <p className="text-white font-black text-3xl tracking-[0.2em] my-4">123456</p>
+                  </div>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="w-full bg-emerald-600 text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-xl active:scale-95"
+                  >
+                    Retourner à la connexion
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-white/5 border border-white/10 p-5 rounded-2xl text-left">
+                    <p className="text-slate-300 text-[11px] leading-relaxed mb-3 font-medium">
+                      BistroGest sauvegarde toutes vos données de caisse et de stocks localement sur cet appareil.
+                    </p>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">
+                      Si vous avez oublié votre code, veuillez saisir le <span className="text-amber-400 font-bold">Code Maître de Secours</span> fourni lors de votre souscription ou contactez l'administrateur.
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <KeyRound className="absolute left-6 top-1/2 -translate-y-1/2 text-amber-500 w-6 h-6" />
+                    <input 
+                      type="password"
+                      maxLength={8}
+                      placeholder="CODE MAÎTRE"
+                      value={recoveryCode}
+                      onChange={(e) => setRecoveryCode(e.target.value)}
+                      className="w-full bg-white/5 border-2 border-white/10 text-white py-6 pl-16 pr-6 rounded-[2rem] text-2xl font-black tracking-[0.5em] focus:border-amber-500 outline-none transition-all text-center uppercase"
+                    />
+                  </div>
+
+                  {error && <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest bg-rose-500/10 py-3 rounded-xl">{error}</p>}
+                  
+                  <button 
+                    onClick={handleRecoverOwner} 
+                    className="w-full bg-amber-600 text-white py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
+                  >
+                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <ChevronRight className="w-6 h-6" />}
+                    Réinitialiser le code
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
