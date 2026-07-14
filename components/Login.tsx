@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ShoppingCart, ShieldCheck, Store, ChevronRight, KeyRound, Users, ArrowLeft, Loader2, User as UserIcon, Smartphone } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, Store, ChevronRight, KeyRound, Users, ArrowLeft, Loader2, User as UserIcon, Smartphone, ChevronDown } from 'lucide-react';
 import { User, UserRole, StaffMember } from '../types';
 
 interface LoginProps {
@@ -154,26 +154,32 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
 
               <div className="space-y-4">
                 <div className="relative">
-                  <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <input 
-                    type="text"
-                    placeholder="IDENTIFIANT (USERNAME)"
+                  <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none" />
+                  <select 
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 text-white py-5 pl-14 pr-6 rounded-2xl font-bold outline-none focus:border-indigo-500 transition-all uppercase text-sm"
-                  />
+                    className="w-full bg-slate-900 border border-white/10 text-white py-5 pl-14 pr-12 rounded-2xl font-bold outline-none focus:border-indigo-500 transition-all text-left text-sm appearance-none cursor-pointer"
+                  >
+                    <option value="" className="text-slate-500 bg-slate-900">-- SÉLECTIONNEZ VOTRE COMPTE --</option>
+                    {staffList.filter(s => s.isActive).map(s => (
+                      <option key={s.id} value={s.username} className="bg-slate-900 text-white">
+                        {s.name} ({s.username})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none" />
                 </div>
                 <div className="relative">
                   <KeyRound className="absolute left-6 top-1/2 -translate-y-1/2 text-indigo-500 w-5 h-5" />
                   <input 
                     type="password"
                     inputMode="numeric"
-                    maxLength={4}
+                    maxLength={6}
                     placeholder="CODE PIN"
                     value={inputCode}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, '');
-                      if (val.length <= 4) setInputCode(val);
+                      if (val.length <= 6) setInputCode(val);
                     }}
                     className="w-full bg-white/5 border border-white/10 text-white py-5 pl-14 pr-6 rounded-2xl font-black tracking-[0.8em] outline-none focus:border-indigo-500 transition-all text-center text-xl"
                   />

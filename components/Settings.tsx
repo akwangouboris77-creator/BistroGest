@@ -540,30 +540,41 @@ const Settings: React.FC<SettingsProps> = ({ settings, setSettings, store, setSt
                  <button type="button" onClick={() => setIsStaffModalOpen(false)} className="p-2 text-slate-400"><X /></button>
               </div>
               <div className="p-8 space-y-6">
-                 <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nom complet du serveur</label>
-                      <div className="relative">
-                        <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input name="name" required defaultValue={editingStaff?.name} placeholder="Ex: Moussa Obiang" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 pl-12 rounded-2xl font-bold outline-none" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identifiant Unique (Username)</label>
-                      <div className="relative">
-                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input name="username" required defaultValue={editingStaff?.username} placeholder="Ex: moussa241" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 pl-12 rounded-2xl font-bold outline-none uppercase" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Code Secret (4 chiffres)</label>
-                      <div className="relative">
-                        <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
-                        <input name="accessCode" type="password" maxLength={4} required defaultValue={editingStaff?.accessCode} placeholder="Ex: 0000" className="w-full bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800 p-4 pl-12 rounded-2xl font-black text-2xl tracking-[0.8em] outline-none text-emerald-600 text-center" />
-                      </div>
-                    </div>
-                 </div>
-                 <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3">
+                                   <div className="space-y-4">
+                     <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nom complet du serveur</label>
+                       <div className="relative">
+                         <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                         <input name="name" required defaultValue={editingStaff?.name} placeholder="Ex: Moussa Obiang" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 pl-12 rounded-2xl font-bold outline-none" />
+                       </div>
+                     </div>
+                     <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Rôle / Fonction</label>
+                       <select 
+                         name="role" 
+                         defaultValue={editingStaff?.role || 'Serveur'} 
+                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl font-bold outline-none text-xs"
+                       >
+                         <option value="Serveur">Serveur / Serveuse</option>
+                         <option value="Gérant">Gérant / Gérante</option>
+                       </select>
+                     </div>
+                     <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identifiant Unique (Username)</label>
+                       <div className="relative">
+                         <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                         <input name="username" required defaultValue={editingStaff?.username} placeholder="Ex: moussa241" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 pl-12 rounded-2xl font-bold outline-none uppercase" />
+                       </div>
+                     </div>
+                     <div className="space-y-1">
+                       <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Code Secret (4 à 6 chiffres)</label>
+                       <div className="relative">
+                         <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                         <input name="accessCode" type="password" maxLength={6} required defaultValue={editingStaff?.accessCode} placeholder="Ex: 2410" className="w-full bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800 p-4 pl-12 rounded-2xl font-black text-2xl tracking-[0.8em] outline-none text-emerald-600 text-center" />
+                       </div>
+                     </div>
+                  </div>
+                  <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3">
                    <Save className="w-5 h-5" /> Confirmer le compte
                  </button>
               </div>
