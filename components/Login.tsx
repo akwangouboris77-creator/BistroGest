@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ShoppingCart, ShieldCheck, Store, ChevronRight, KeyRound, Users, ArrowLeft, Loader2, User as UserIcon, Smartphone, ChevronDown } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, Store, ChevronRight, KeyRound, Users, ArrowLeft, Loader2, User as UserIcon, Smartphone, ChevronDown, Upload } from 'lucide-react';
 import { User, UserRole, StaffMember } from '../types';
 
 interface LoginProps {
@@ -17,6 +17,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
   const [loading, setLoading] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState('');
   const [recoverySuccess, setRecoverySuccess] = useState(false);
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (!confirm("Cette action va restaurer toutes vos données et vos codes d'accès sur cet appareil. Continuer ?")) return;
+        const { db } = await import('../db');
+        await (db as any).transaction('rw', [db.products, db.sales, db.staff, db.pendingOrders, db.metadata], async () => {
+          await db.products.clear(); await db.products.bulkAdd(data.products || []);
+          await db.sales.clear(); await db.sales.bulkAdd(data.sales || []);
+          await db.staff.clear(); await db.staff.bulkAdd(data.staff || []);
+          await db.pendingOrders.clear(); await db.pendingOrders.bulkAdd(data.pendingOrders || []);
+          await db.metadata.clear(); await db.metadata.bulkAdd(data.metadata || []);
+        });
+        alert("Restauration réussie ! L'application va redémarrer avec toutes vos données et vos codes d'accès.");
+        window.location.reload();
+      } catch (err) {
+        alert("Fichier de sauvegarde invalide (.bistro).");
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleVerifyOwner = () => {
     setLoading(true);
@@ -136,6 +161,22 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
                   <Users className="w-5 h-5 text-indigo-500" />
                   Accès Serveurs
                 </button>
+              </div>
+
+              <div className="pt-6 border-t border-white/5 space-y-3 w-full">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-normal">
+                  Changement de téléphone / tablette ?
+                </p>
+                <label className="w-full flex items-center justify-center gap-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 py-4 px-6 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-emerald-500/20 hover:text-emerald-300 transition-all cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  <span>Restaurer une sauvegarde (.bistro)</span>
+                  <input 
+                    type="file" 
+                    accept=".bistro" 
+                    onChange={handleImportBackup} 
+                    className="hidden" 
+                  />
+                </label>
               </div>
             </div>
           )}
