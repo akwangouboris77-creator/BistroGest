@@ -1,6 +1,7 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db as localDb } from './db';
 import { db as firestore } from './firebase';
+import { Store } from './types';
 
 export async function uploadToCloud(storeId: string): Promise<void> {
   if (!storeId) throw new Error("ID de l'établissement manquant.");
@@ -45,13 +46,83 @@ export async function uploadToCloud(storeId: string): Promise<void> {
   // Also update store summary in main document
   const storeDocRef = doc(firestore, 'stores', storeId);
   const bistroStore = metadata.find(m => m.key === 'bistro_store')?.value;
+  const currentCode = bistroStore?.activationCode || "123456";
   await setDoc(storeDocRef, {
     id: storeId,
     name: bistroStore?.name || "Mon Bistro",
-    activationCode: bistroStore?.activationCode || "123456",
+    activationCode: currentCode,
     staffAccessCode: bistroStore?.staffAccessCode || "2410",
     lastSyncedAt: timestamp
   }, { merge: true });
+
+  // Map activation code in activation_codes collection for instant cross-terminal lookup
+  if (currentCode) {
+    const codeDocRef = doc(firestore, 'activation_codes', currentCode);
+    await setDoc(codeDocRef, {
+      storeId: storeId,
+      activationCode: currentCode,
+      updatedAt: timestamp
+    }, { merge: true });
+  }
+}
+
+export async function syncStoreCodeToCloud(store: Store): Promise<void> {
+  if (!store || !store.id) return;
+  try {
+    const timestamp = new Date().toISOString();
+    const storeDocRef = doc(firestore, 'stores', store.id);
+    await setDoc(storeDocRef, {
+      id: store.id,
+      name: store.name || "Mon Bistro",
+      activationCode: store.activationCode,
+      staffAccessCode: store.staffAccessCode || "2410",
+      lastSyncedAt: timestamp
+    }, { merge: true });
+
+    if (store.activationCode) {
+      const codeDocRef = doc(firestore, 'activation_codes', store.activationCode);
+      await setDoc(codeDocRef, {
+        storeId: store.id,
+        activationCode: store.activationCode,
+        updatedAt: timestamp
+      }, { merge: true });
+    }
+  } catch (err) {
+    console.error("Erreur sync code vers cloud:", err);
+  }
+}
+
+export async function verifyActivationCodeOnline(inputCode: string): Promise<string | null> {
+  if (!inputCode) return null;
+
+  try {
+    // 1. Direct doc lookup in activation_codes/{inputCode}
+    const codeDocRef = doc(firestore, 'activation_codes', inputCode);
+    const codeSnap = await getDoc(codeDocRef);
+    if (codeSnap.exists()) {
+      const data = codeSnap.data();
+      if (data.storeId) {
+        const downloaded = await downloadFromCloud(data.storeId);
+        if (downloaded) return data.storeId;
+      }
+    }
+
+    // 2. Query stores where activationCode == inputCode
+    const storesRef = collection(firestore, 'stores');
+    const q = query(storesRef, where('activationCode', '==', inputCode));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const storeDoc = querySnapshot.docs[0];
+      const storeId = storeDoc.id;
+      const downloaded = await downloadFromCloud(storeId);
+      if (downloaded) return storeId;
+    }
+  } catch (err) {
+    console.error("Erreur vérification code en ligne:", err);
+  }
+
+  return null;
 }
 
 export async function downloadFromCloud(storeId: string): Promise<boolean> {

@@ -30,6 +30,9 @@ import PaymentReminders from './components/PaymentReminders';
 import DigitalMenu from './components/DigitalMenu';
 import Purchases from './components/Purchases';
 import { Truck } from 'lucide-react';
+import { auth } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { syncStoreCodeToCloud, downloadFromCloud } from './sync';
 
 const STORES: Store[] = [
   { 
@@ -174,7 +177,29 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // PERSISTANCE AUTOMATIQUE DANS INDEXEDDB
+  // AUTO-SYNCHRONISATION AU DÉMARRAGE SI COMPTE CLOUD CONNECTÉ
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (usr) => {
+      if (usr) {
+        try {
+          const success = await downloadFromCloud(usr.uid);
+          if (success) {
+            const savedStore = await db.getMetadata<Store>('bistro_store');
+            if (savedStore) setCurrentStore(savedStore);
+            const savedStaff = await db.staff.toArray();
+            if (savedStaff.length > 0) setStaff(savedStaff);
+            const savedSettings = await db.getMetadata<Settings>('bistro_settings');
+            if (savedSettings) setSettings(savedSettings);
+          }
+        } catch (e) {
+          console.error("Auto-sync Cloud au démarrage :", e);
+        }
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // PERSISTANCE AUTOMATIQUE DANS INDEXEDDB ET DANS LE CLOUD
   useEffect(() => {
     if (!isDataLoaded) return;
     
@@ -183,6 +208,10 @@ const App: React.FC = () => {
     db.saveMetadata('bistro_categories', categories);
     db.saveMetadata('bistro_crates', crates);
     db.saveMetadata('bistro_settings', settings);
+
+    if (currentStore && currentStore.activationCode) {
+      syncStoreCodeToCloud(currentStore);
+    }
   }, [currentStore, user, categories, crates, settings, isDataLoaded]);
 
   // GESTION DU THÈME

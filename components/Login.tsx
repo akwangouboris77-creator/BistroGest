@@ -4,7 +4,7 @@ import { ShoppingCart, ShieldCheck, Store, ChevronRight, KeyRound, Users, ArrowL
 import { User, UserRole, StaffMember } from '../types';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { downloadFromCloud } from '../sync';
+import { downloadFromCloud, verifyActivationCodeOnline } from '../sync';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -51,13 +51,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
     reader.readAsText(file);
   };
 
-  const handleVerifyOwner = () => {
+  const handleVerifyOwner = async () => {
     setLoading(true);
     setError('');
     
-    setTimeout(() => {
-      const isCorrectCode = inputCode === validActivationCode || inputCode === "123456" || inputCode === "998877";
-      if (isCorrectCode) {
+    // 1. Vérification locale immédiate
+    const isCorrectCode = inputCode === validActivationCode || inputCode === "123456" || inputCode === "998877";
+    if (isCorrectCode) {
+      const owner: User = {
+        id: "owner-main",
+        role: UserRole.OWNER,
+        name: "Propriétaire",
+        email: "admin@bistrogest.ga",
+        photo: "https://ui-avatars.com/api/?name=Admin&background=059669&color=fff",
+        isVerified: true
+      };
+      onLogin(owner);
+      return;
+    }
+
+    // 2. Vérification en ligne si le terminal n'a pas encore le nouveau mot de passe
+    try {
+      const foundStoreId = await verifyActivationCodeOnline(inputCode);
+      if (foundStoreId) {
         const owner: User = {
           id: "owner-main",
           role: UserRole.OWNER,
@@ -67,11 +83,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
           isVerified: true
         };
         onLogin(owner);
-      } else {
-        setError("Code établissement incorrect.");
-        setLoading(false);
+        return;
       }
-    }, 1000);
+    } catch (err) {
+      console.error("Vérification en ligne échouée :", err);
+    }
+
+    setError("Code établissement incorrect. Si vous l'avez modifié sur un autre appareil, assurez-vous de l'avoir synchronisé dans Paramètres.");
+    setLoading(false);
   };
 
   const handleVerifyStaff = () => {
