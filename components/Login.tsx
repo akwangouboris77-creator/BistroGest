@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ShoppingCart, ShieldCheck, Store, ChevronRight, KeyRound, Users, ArrowLeft, Loader2, User as UserIcon, Smartphone, ChevronDown, Upload, Cloud, CloudDownload, AlertCircle, CircleCheck } from 'lucide-react';
 import { User, UserRole, StaffMember } from '../types';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebase';
 import { downloadFromCloud, verifyActivationCodeOnline } from '../sync';
 
@@ -148,6 +148,36 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
     }, 1200);
   };
 
+  const handleGoogleRestore = async () => {
+    setLoading(true);
+    setError('');
+    setCloudSuccess('');
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const uid = userCredential.user.uid;
+      
+      const success = await downloadFromCloud(uid);
+      if (success) {
+        setCloudSuccess("Données et codes récupérés avec succès via Google ! Redémarrage...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setError("Aucune sauvegarde trouvée sur le Cloud pour ce compte Google.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError("Connexion Google annulée.");
+      } else {
+        setError(err.message || "Erreur lors de la récupération avec Google.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCloudRestore = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -170,6 +200,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
       console.error(err);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError("Identifiants Cloud de l'établissement incorrects.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError("La connexion par e-mail/mot de passe n'est pas activée sur votre console Firebase. Utilisez le bouton 'Récupérer avec Google' ci-dessous ou activez 'E-mail/Mot de passe' dans la console Firebase (Authentication > Mode de connexion).");
       } else {
         setError(err.message || "Erreur lors de la récupération.");
       }
@@ -413,8 +445,26 @@ const Login: React.FC<LoginProps> = ({ onLogin, validActivationCode, staffList }
                   className="w-full bg-indigo-600 text-white py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 hover:bg-indigo-500"
                 >
                   {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <CloudDownload className="w-6 h-6" />}
-                  Lancer la récupération
+                  Lancer la récupération E-mail
                 </button>
+
+                <div className="pt-4 border-t border-white/10 flex flex-col items-center gap-3">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Ou connexion rapide recommandée :</p>
+                  <button
+                    type="button"
+                    onClick={handleGoogleRestore}
+                    disabled={loading}
+                    className="w-full bg-white text-slate-900 hover:bg-slate-100 p-5 rounded-[2.5rem] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    Récupérer avec Google (1-Clic)
+                  </button>
+                </div>
               </form>
             </div>
           )}
